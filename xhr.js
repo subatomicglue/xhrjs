@@ -10,7 +10,7 @@ let XHR_VERBOSE = false;
 // - To auto-stringify the data Javascript Object into a string:  pass {'Content-Type': 'application/json; charset=utf-8' } into the headers param
 // - To auto-parse the response body JSON into a JavaScript Object:  pass {'Accept': 'application/json'} into the headers param
 // success result is returned with { body: Object, headers: [] }
-module.exports.xhr = function xhr(type /* PUT, GET, POST, DELETE */, url, headers = {}, data = undefined, progressCB = () => {}, options = {}) {
+module.exports.xhr = function xhr(type /* PUT, GET, POST, DELETE */, url, headers = {}, data = undefined, progressCB = (o, body, AbortFunc) => {}, options = {}) {
   data = (type === 'POST' || type === 'post') && data === undefined ? {} : data;
   let abort_called = false;
   function needToStringifyInputData( headers ) {
@@ -88,7 +88,7 @@ ${"options: " + util.inspect( options )}
             // error >= 400, let the app deal with it
             XHR_VERBOSE && console.error( "xhr( "+type+", "+url+" ): <-- ERROR: response status(" + xhr.status + "):\n\n" + util.inspect( body ) );
             if (progressCB) {
-              progressCB( undefined, xhr.response, Abort );
+              progressCB( undefined, body /* xhr.response */, Abort );
             }
             let result = { body: body, headers: res_headers, status: xhr.status };
             // never reject() on >=400 error codes,
