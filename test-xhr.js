@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const xhr = require('./xhr').xhr;
-const xhrAuth = require('./xhr').xhrAuth;
+const xhr = require('./xhr').init( require("xmlhttprequest").XMLHttpRequest ).xhr;
+const xhrAuth = require('./xhr').init( require("xmlhttprequest").XMLHttpRequest ).xhrAuth;
 
 
 // main entrypoint

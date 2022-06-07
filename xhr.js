@@ -1,16 +1,26 @@
 //let is_node = typeof process === 'object';
-if (/*is_node && */typeof XMLHttpRequest === 'undefined') {
-  XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
-}
+//if (/*is_node && */typeof XMLHttpRequest === 'undefined') {
+//  XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+//}
 let util = require( "util" );
 let XHR_VERBOSE = false;
 
+module.exports.__XMLHttpRequest = undefined; // = require('xmlhttprequest').XMLHttpRequest
+
+module.exports.init = function init( _XMLHttpRequest /* in browser:  XMLHttpRequest;  in nodejs:  require('xmlhttprequest').XMLHttpRequest */ ) {
+  module.exports.__XMLHttpRequest = _XMLHttpRequest
+  return module.exports
+}
+
+
 // Make an HTTP request
+// same parameter interface to subatomicglue's request() https://github.com/subatomicglue/requestjs, interchangable...
+// auto converts JSON <--> Javascript object (hey, it's a 1st class datatype to javascript, let's treat it like one)
 // headers is typically: {'Content-Type': 'application/json; charset=utf-8', 'Accept': 'application/json' }
 // - To auto-stringify the data Javascript Object into a string:  pass {'Content-Type': 'application/json; charset=utf-8' } into the headers param
 // - To auto-parse the response body JSON into a JavaScript Object:  pass {'Accept': 'application/json'} into the headers param
 // success result is returned with { body: Object, headers: [] }
-module.exports.xhr = function xhr(type /* PUT, GET, POST, DELETE */, url, headers = {}, data = undefined, progressCB = (o, body, AbortFunc) => {}, options = {}) {
+module.exports.xhr = function xhr( type /* PUT, GET, POST, DELETE */, url, headers = {}, data = undefined, progressCB = (o, body, AbortFunc) => {}, options = {} ) {
   data = (type === 'POST' || type === 'post') && data === undefined ? {} : data;
   let abort_called = false;
   function needToStringifyInputData( headers ) {
@@ -35,7 +45,7 @@ ${"options: " + util.inspect( options )}
     let _options = {}; // default opts go here
     for (let op in options) _options[op] = options[op];
 
-    let xhr = new XMLHttpRequest();
+    let xhr = new module.exports.__XMLHttpRequest();
 
     //need to tell xhr to include cookies
     xhr.withCredentials = true;
@@ -142,5 +152,9 @@ module.exports.xhrAuth = async function xhrAuth(access_token, type, url, headers
   //if we have an access token, then use that by setting the authorization header
   headers['Authorization'] = 'Bearer ' + encodeURIComponent( access_token );
   return await module.exports.xhr( type, url, headers, data, progressCB );
+}
+
+module.exports.basicAuthGenerator = function( username, password ) {
+  return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
 }
 
