@@ -1,26 +1,36 @@
+/////////////////////////////////////////////////////////////////////////////////////////////
+// USAGE:
+//
+//   NODEJS
+//      // npm install --save xmlhttprequest
+//      const xhr = require('xhrjs/xhr').init( require("xmlhttprequest").XMLHttpRequest ).xhr;
+//      const xhrAuth = require('xhrjs/xhr').init( require("xmlhttprequest").XMLHttpRequest ).xhrAuth;
+//   BROWSER
+//      <link rel="script" href="hr.js"/>
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+
 //let is_node = typeof process === 'object';
 //if (/*is_node && */typeof XMLHttpRequest === 'undefined') {
 //  XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 //}
-let util = require( "util" );
 let XHR_VERBOSE = false;
 
-module.exports.__XMLHttpRequest = undefined; // = require('xmlhttprequest').XMLHttpRequest
-
-module.exports.init = function init( _XMLHttpRequest /* in browser:  XMLHttpRequest;  in nodejs:  require('xmlhttprequest').XMLHttpRequest */ ) {
-  module.exports.__XMLHttpRequest = _XMLHttpRequest
-  return module.exports
-}
 
 
 // Make an HTTP request
 // same parameter interface to subatomicglue's request() https://github.com/subatomicglue/requestjs, interchangable...
 // auto converts JSON <--> Javascript object (hey, it's a 1st class datatype to javascript, let's treat it like one)
-// headers is typically: {'Content-Type': 'application/json; charset=utf-8', 'Accept': 'application/json' }
-// - To auto-stringify the data Javascript Object into a string:  pass {'Content-Type': 'application/json; charset=utf-8' } into the headers param
-// - To auto-parse the response body JSON into a JavaScript Object:  pass {'Accept': 'application/json'} into the headers param
+// JSON:
+//   headers is typically: {'Content-Type': 'application/json; charset=utf-8', 'Accept': 'application/json' }
+//   - To auto-stringify the data Javascript Object into a string:  pass {'Content-Type': 'application/json; charset=utf-8' } into the headers param
+//   - To auto-parse the response body JSON into a JavaScript Object:  pass {'Accept': 'application/json'} into the headers param
+// BINARY:
+//   headers is typically: {'Content-Type': 'application/octet-stream' }
 // success result is returned with { body: Object, headers: [] }
-module.exports.xhr = function xhr( type /* PUT, GET, POST, DELETE */, url, headers = {}, data = undefined, progressCB = (o, body, AbortFunc) => {}, options = {} ) {
+function xhr( type /* PUT, GET, POST, DELETE */, url, headers = {}, data = undefined, progressCB = (o, body, AbortFunc) => {}, options = {} ) {
+  let ___XMLHttpRequest = module && module.exports ? module.exports.__XMLHttpRequest : XMLHttpRequest;
+
   data = (type === 'POST' || type === 'post') && data === undefined ? {} : data;
   let abort_called = false;
   function needToStringifyInputData( headers ) {
@@ -36,19 +46,21 @@ module.exports.xhr = function xhr( type /* PUT, GET, POST, DELETE */, url, heade
 
   // verbose debugging (how was xhr() called?)
   XHR_VERBOSE && console.log( `xhr( type: ${type}, url: ${url}, headers, data, progress, options ): -->
-${headers ? "headers: " + util.inspect( headers )  : ''}
-${"data: " + util.inspect( data ) }
-${"options: " + util.inspect( options )}
+${headers ? "headers: " + JSON.stringify( headers, null, 1 )  : ''}
+${"data: " + JSON.stringify( data, null, 1 ) }
+${"options: " + JSON.stringify( options, null, 1 )}
   `);
 
   return new Promise((rs, rj) => {
     let _options = {}; // default opts go here
     for (let op in options) _options[op] = options[op];
 
-    let xhr = new module.exports.__XMLHttpRequest();
+    let xhr = new ___XMLHttpRequest();
 
     //need to tell xhr to include cookies
     xhr.withCredentials = true;
+    //xhr.responseType = 'arraybuffer';
+    //xhr.responseType = 'blob';
 
     let Abort = () => {
       abort_called = true;
@@ -77,15 +89,17 @@ ${"options: " + util.inspect( options )}
           try {
             body = JSON.parse( body );
           } catch (err) {
-            util.inspect( err );
-            util.inspect( body );
+            console.log(
+              JSON.stringify( err, null, 1),
+              JSON.stringify( body, null, 1)
+            );
           }
         }
 
         // handle good status
         if (xhr.status >= 200 && xhr.status < 400) {
           let result = { status: xhr.status, body: body, headers: res_headers };
-          XHR_VERBOSE && console.log( "xhr( "+type+", "+url+" ): <-- SUCCESS:\nresult:\n" + util.inspect( result ) );
+          XHR_VERBOSE && console.log( "xhr( "+type+", "+url+" ): <-- SUCCESS:\nresult:\n" + JSON.stringify( result, null, 1) );
           return rs( result );
         }
 
@@ -96,7 +110,7 @@ ${"options: " + util.inspect( options )}
             return rs(result);
           } else {
             // error >= 400, let the app deal with it
-            XHR_VERBOSE && console.error( "xhr( "+type+", "+url+" ): <-- ERROR: response status(" + xhr.status + "):\n\n" + util.inspect( body ) );
+            XHR_VERBOSE && console.error( "xhr( "+type+", "+url+" ): <-- ERROR: response status(" + xhr.status + "):\n\n" + JSON.stringify( body, null, 1) );
             if (progressCB) {
               progressCB( undefined, body /* xhr.response */, Abort );
             }
@@ -144,17 +158,41 @@ ${"options: " + util.inspect( options )}
 // NOTE:
 // To auto-parse the response body JSON into a JavaScript Object:  pass {'Accept': 'application/json'} into the headers param
 // headers is typically: {'Content-Type': 'application/json; charset=utf-8', 'Accept': 'application/json' }
-module.exports.xhrAuth = async function xhrAuth(access_token, type, url, headers, data, progressCB ) {
+async function xhrAuth(access_token, type, url, headers, data, progressCB ) {
   if (access_token == undefined || access_token == '') {
     return { status: 401, body: {}, error: "no access token" };
   }
 
   //if we have an access token, then use that by setting the authorization header
   headers['Authorization'] = 'Bearer ' + encodeURIComponent( access_token );
-  return await module.exports.xhr( type, url, headers, data, progressCB );
+  return await xhr( type, url, headers, data, progressCB );
 }
 
-module.exports.basicAuthGenerator = function( username, password ) {
+function basicAuthGenerator( username, password ) {
   return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
 }
+
+
+
+
+
+
+
+//let is_node = typeof process === 'object';
+if (/*is_node && */typeof XMLHttpRequest === 'undefined' || (module && module.exports)) {
+  module.exports.__XMLHttpRequest = undefined; // = require('xmlhttprequest').XMLHttpRequest
+
+  function init( _XMLHttpRequest /* in browser:  XMLHttpRequest;  in nodejs:  require('xmlhttprequest').XMLHttpRequest */ ) {
+    if (module && module.exports) {
+      module.exports.__XMLHttpRequest = _XMLHttpRequest
+      return module.exports
+    }
+    return {};
+  }
+  module.exports.init = init;
+  module.exports.xhr = xhr;
+  module.exports.xhrAuth = xhrAuth;
+  module.exports.basicAuthGenerator = basicAuthGenerator;
+}
+
 
