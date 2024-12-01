@@ -6,7 +6,9 @@
 //      const xhr = require('xhrjs/xhr').init( require("xmlhttprequest").XMLHttpRequest ).xhr;
 //      const xhrAuth = require('xhrjs/xhr').init( require("xmlhttprequest").XMLHttpRequest ).xhrAuth;
 //   BROWSER
-//      <link rel="script" href="hr.js"/>
+//      <link rel="script" href="./node_modules/xhrjs/xhr.js"/>
+//      or
+//      import { xhr } from './node_modules/xhrjs/xhr.js';
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 
